@@ -1,44 +1,43 @@
 import json
-from datetime import datetime
-
-from utils import get_card_info, get_currency_rates, get_greeting, get_stock_prices, get_top_transactions
+from utils import get_greeting, get_card_data, get_transactions, get_exchange_rates, get_stock_prices
 
 
-def main(date_str):
-    # Парсинг даты
-    date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+def get_main_page_data(date_str):
+    """Генерирует JSON-ответ с данными для веб-страницы "Главная".
 
-    # Получение приветствия
-    greeting = get_greeting(date.hour)
+    Args:
+    date_str (str): Строка с датой и временем в формате YYYY-MM-DD HH:MM:SS.
 
-    # Загрузка транзакций
-    transactions = pd.read_csv("transactions.csv")
+    Returns:
+    str: JSON-ответ с данными для "Главной".
+    """
+    try:
+        greeting = get_greeting(date_str)
+        card_data = get_card_data()
+        transactions = get_transactions()
+        exchange_rates = get_exchange_rates()
+        stock_prices = get_stock_prices(date_str)
 
-    # Получение информации о картах
-    card_info = [get_card_info(transactions, card_number) for card_number in transactions["card_number"].unique()]
+        # Предполагается, что функции возвращают строку JSON или уже подготовленные данные
+        data = {
+            "приветствие": greeting,
+            "открытки": json.loads(card_data) if isinstance(card_data, str) else card_data,
+            "транзакции": json.loads(transactions) if isinstance(transactions, str) else transactions,
+            "exchange_rates": json.loads(exchange_rates) if isinstance(exchange_rates, str) else exchange_rates,
+            "stock_prices": json.loads(stock_prices) if isinstance(stock_prices, str) else stock_prices,
+        }
 
-    # Получение топ-транзакций
-    top_transactions = get_top_transactions(transactions)
-
-    # Получение курсов валют
-    currency_rates = get_currency_rates()
-
-    # Получение цен акций
-    stock_prices = get_stock_prices()
-
-    # Формирование JSON-ответа
-    response = {
-        "greeting": greeting,
-        "cards": card_info,
-        "top_transactions": top_transactions.to_dict(orient="records"),
-        "currency_rates": currency_rates,
-        "stock_prices": stock_prices,
-    }
-
-    return json.dumps(response)
+        return json.dumps(data, ensure_ascii=False)  # Убедитесь, что кириллица экспортируется корректно
+    except json.JSONDecodeError as e:
+        print(f"JSON Decode Error: {e}")
+        return json.dumps({"error": "Ошибка при декодировании JSON: " + str(e)}, ensure_ascii=False)
+    except Exception as e:
+        print(f"Ошибка генерации главной страницы: {e}")
+        return json.dumps({"error": str(e)}, ensure_ascii=False)  # Вернуть ошибку в формате JSON
 
 
+# Пример использования
 if __name__ == "__main__":
-    date_str = "2023-03-15 14:30:00"
-    response = main(date_str)
-    print(response)
+    date_str = "2023-06-01 12:00:00"
+    main_page_data = get_main_page_data(date_str)
+    print(main_page_data)
