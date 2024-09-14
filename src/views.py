@@ -1,43 +1,48 @@
 import json
-from utils import get_greeting, get_card_data, get_transactions, get_exchange_rates, get_stock_prices
+from datetime import datetime
+from typing import Dict
+import pandas as pd
+from src.utils import (
+    get_greeting,
+    get_transactions_summary,
+    get_top_transactions,
+    get_exchange_rates,
+    get_stock_prices,
+)
 
+def main_page(date_str: str) -> str:
+    """Формирует главную страницу с различными данными на заданную дату."""
 
-def get_main_page_data(date_str):
-    """Генерирует JSON-ответ с данными для веб-страницы "Главная".
+    date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+    start_month = date.replace(day=1)
 
-    Args:
-    date_str (str): Строка с датой и временем в формате YYYY-MM-DD HH:MM:SS.
+    # Чтение данных из Excel-файла
+    df = pd.read_excel("operations.xls")
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], format="%d.%m.%Y")
 
-    Returns:
-    str: JSON-ответ с данными для "Главной".
-    """
-    try:
-        greeting = get_greeting(date_str)
-        card_data = get_card_data()
-        transactions = get_transactions()
-        exchange_rates = get_exchange_rates()
-        stock_prices = get_stock_prices(date_str)
+    # Фильтрация данных
+    filtered_df = df[(df["Дата операции"] >= start_month) & (df["Дата операции"] <= date)]
 
-        # Предполагается, что функции возвращают строку JSON или уже подготовленные данные
-        data = {
-            "приветствие": greeting,
-            "открытки": json.loads(card_data) if isinstance(card_data, str) else card_data,
-            "транзакции": json.loads(transactions) if isinstance(transactions, str) else transactions,
-            "exchange_rates": json.loads(exchange_rates) if isinstance(exchange_rates, str) else exchange_rates,
-            "stock_prices": json.loads(stock_prices) if isinstance(stock_prices, str) else stock_prices,
-        }
+    # Приветствие пользователя в зависимости от времени суток
+    greeting = get_greeting(date)
 
-        return json.dumps(data, ensure_ascii=False)  # Убедитесь, что кириллица экспортируется корректно
-    except json.JSONDecodeError as e:
-        print(f"JSON Decode Error: {e}")
-        return json.dumps({"error": "Ошибка при декодировании JSON: " + str(e)}, ensure_ascii=False)
-    except Exception as e:
-        print(f"Ошибка генерации главной страницы: {e}")
-        return json.dumps({"error": str(e)}, ensure_ascii=False)  # Вернуть ошибку в формате JSON
+    # Сбор данных по транзакциям и кешбэку
+    transactions_summary = get_transactions_summary(filtered_df)
 
+    # Получение топ-5 транзакций
+    top_transactions = get_top_transactions(filtered_df)
 
-# Пример использования
-if __name__ == "__main__":
-    date_str = "2023-06-01 12:00:00"
-    main_page_data = get_main_page_data(date_str)
-    print(main_page_data)
+    # Получение курсов валют и стоимости акций
+    exchange_rates = get_exchange_rates()
+    stock_prices = get_stock_prices()
+
+    # Формируем ответ JSON
+    response = {
+        "greeting": greeting,
+        "transactions_summary": transactions_summary,
+        "top_transactions": top_transactions,
+        "exchange_rates": exchange_rates,
+        "stock_prices": stock_prices,
+    }
+
+    return json.dumps(response)
