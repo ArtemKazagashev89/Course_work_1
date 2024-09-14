@@ -1,14 +1,12 @@
 import json
 from datetime import datetime
 from typing import Dict
+
 import pandas as pd
-from src.utils import (
-    get_greeting,
-    get_transactions_summary,
-    get_top_transactions,
-    get_exchange_rates,
-    get_stock_prices,
-)
+
+from src.utils import (get_exchange_rates, get_greeting, get_stock_prices, get_top_transactions,
+                       get_transactions_summary)
+
 
 def main_page(date_str: str) -> str:
     """Формирует главную страницу с различными данными на заданную дату."""

@@ -1,6 +1,6 @@
 import json
-import re
 import logging
+import re
 
 # Настройка логирования
 logging.basicConfig(level=logging.DEBUG)
@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 def search_personal_transfers(transactions):
-
     """Функция для поиска переводов физическим лицам в транзакциях."""
 
     # Регулярное выражение для поиска имени и первой буквы фамилии

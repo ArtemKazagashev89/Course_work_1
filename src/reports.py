@@ -1,8 +1,9 @@
-import pandas as pd
 import json
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
+
+import pandas as pd
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
