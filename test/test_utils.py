@@ -1,72 +1,63 @@
 import pytest
+import pandas as pd
+from datetime import datetime
+from unittest.mock import patch, mock_open
 import json
-from unittest.mock import patch, Mock
-from src.utils import get_card_data, get_transactions, get_exchange_rates, get_stock_prices
+from src.utils import get_greeting, get_transactions_summary, get_top_transactions, get_exchange_rates, get_stock_prices
 
+def test_get_greeting():
+    assert get_greeting(datetime(2023, 10, 1, 6, 0, 0)) == "Доброе утро"
+    assert get_greeting(datetime(2023, 10, 1, 12, 0, 0)) == "Добрый день"
+    assert get_greeting(datetime(2023, 10, 1, 17, 0, 0)) == "Добрый вечер"
+    assert get_greeting(datetime(2023, 10, 1, 23, 0, 0)) == "Доброй ночи"
 
-# Тесты для get_card_data
-def test_get_card_data():
-    expected_data = [
-        {"last_digits": "1234", "total_expenses": 1000, "cashback": 50},
-        {"last_digits": "5678", "total_expenses": 2000, "cashback": 100},
+@pytest.fixture
+def sample_df():
+    data = {
+        "Номер карты": ["1234", "1234", "5678", "5678", "5678"],
+        "Сумма операции с округлением": [100.0, 150.0, 200.0, 100.0, 50.0],
+        "Сумма платежа": [100.0, 150.0, 200.0, 100.0, 50.0],
+    }
+    return pd.DataFrame(data)
+
+def test_get_transactions_summary(sample_df):
+    summary = get_transactions_summary(sample_df)
+    expected = [
+        {"card_number": "1234", "total_expense": 250.0, "cashback": 2},
+        {"card_number": "5678", "total_expense": 350.0, "cashback": 3},
     ]
-    actual_data = json.loads(get_card_data("2023-06-01"))
-    assert actual_data == expected_data
+    assert summary == expected
 
-
-# Тесты для get_transactions
-def test_get_transactions():
-    expected_data = [
-        {"amount": 500, "date": "2023-06-01"},
-        {"amount": 400, "date": "2023-06-02"},
-        {"amount": 300, "date": "2023-06-03"},
-        {"amount": 200, "date": "2023-06-04"},
-        {"amount": 100, "date": "2023-06-05"},
+def test_get_top_transactions(sample_df):
+    top_transactions = get_top_transactions(sample_df)
+    expected = [
+        {"Номер карты": "5678", "Сумма операции с округлением": 200.0, "Сумма платежа": 200.0},
+        {"Номер карты": "1234", "Сумма операции с округлением": 150.0, "Сумма платежа": 150.0},
+        {"Номер карты": "5678", "Сумма операции с округлением": 100.0, "Сумма платежа": 100.0},
+        {"Номер карты": "1234", "Сумма операции с округлением": 100.0, "Сумма платежа": 100.0},
+        {"Номер карты": "5678", "Сумма операции с округлением": 50.0, "Сумма платежа": 50.0},
     ]
-    actual_data = json.loads(get_transactions("2023-06-01"))
-    assert actual_data == expected_data
+    assert top_transactions == expected
 
+@patch("builtins.open", new_callable=mock_open, read_data='{"user_currencies": ["EUR", "GBP"]}')
+@patch("your_module.requests.get")
+def test_get_exchange_rates(mock_get, mock_open_file):
+    mock_response = mock_get.return_value
+    mock_response.json.return_value = {
+        "rates": {"EUR": 0.85, "GBP": 0.75}
+    }
 
-# Тесты для get_exchange_rates
-@patch("requests.get")
-def test_get_exchange_rates(mock_get):
-    mock_response = Mock()
-    mock_response.json.return_value = {"rates": {"EUR": 0.85, "GBP": 0.75}}
-    mock_response.status_code = 200
-    mock_get.return_value = mock_response
+    expected = {"EUR": {"EUR": 0.85}, "GBP": {"GBP": 0.75}}
+    assert get_exchange_rates() == expected
 
-    expected_data = {"EUR": 0.85, "GBP": 0.75}
-    actual_data = json.loads(get_exchange_rates("2023-06-01"))
-    assert actual_data == expected_data
+@patch("builtins.open", new_callable=mock_open, read_data='{"user_stocks": ["AAPL", "GOOGL"]}')
+@patch("your_module.requests.get")
+def test_get_stock_prices(mock_get, mock_open_file):
+    mock_response = mock_get.return_value
+    mock_response.json.side_effect = [
+        [{"symbol": "AAPL", "price": 150.0}],
+        [{"symbol": "GOOGL", "price": 2500.0}]
+    ]
 
-
-@patch("requests.get", side_effect=requests.exceptions.RequestException("Mocked error"))
-def test_get_exchange_rates_error(mock_get):
-    expected_error = {"error": "Ошибка получения данных о курсах валют"}
-    actual_data = json.loads(get_exchange_rates("2023-06-01"))
-    assert actual_data == expected_error
-
-
-# Тесты для get_stock_prices
-@patch("requests.get")
-@patch("pandas.DataFrame")
-def test_get_stock_prices(mock_dataframe, mock_get):
-    mock_response = Mock()
-    mock_response.json.return_value = {"historical": [{"date": "2023-06-01", "close": 100.0}]}
-    mock_response.status_code = 200
-    mock_get.return_value = mock_response
-
-    mock_dataframe.return_value = pd.DataFrame({"date": ["2023-06-01"], "close": [100.0]})
-    mock_dataframe.return_value["date"] = pd.to_datetime(mock_dataframe.return_value["date"])
-    mock_dataframe.return_value = mock_dataframe.return_value.set_index("date")
-
-    expected_data = {"2023-06-01": {"close": 100.0}}
-    actual_data = json.loads(get_stock_prices("2023-06-01 12:00:00"))
-    assert actual_data == expected_data
-
-
-@patch("requests.get", side_effect=requests.exceptions.RequestException("Mocked error"))
-def test_get_stock_prices_error(mock_get):
-    expected_error = {"error": "Ошибка получения данных о ценах на акции"}
-    actual_data = json.loads(get_stock_prices("2023-06-01 12:00:00"))
-    assert actual_data == expected_error
+    expected = {"AAPL": 150.0, "GOOGL": 2500.0}
+    assert get_stock_prices() == expected
