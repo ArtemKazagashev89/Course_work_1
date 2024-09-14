@@ -1,44 +1,48 @@
 import json
 from datetime import datetime
+from typing import Dict
+import pandas as pd
+from src.utils import (
+    get_greeting,
+    get_transactions_summary,
+    get_top_transactions,
+    get_exchange_rates,
+    get_stock_prices,
+)
 
-from utils import get_card_info, get_currency_rates, get_greeting, get_stock_prices, get_top_transactions
+def main_page(date_str: str) -> str:
+    """Формирует главную страницу с различными данными на заданную дату."""
 
-
-def main(date_str):
-    # Парсинг даты
     date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+    start_month = date.replace(day=1)
 
-    # Получение приветствия
-    greeting = get_greeting(date.hour)
+    # Чтение данных из Excel-файла
+    df = pd.read_excel("operations.xls")
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], format="%d.%m.%Y")
 
-    # Загрузка транзакций
-    transactions = pd.read_csv("transactions.csv")
+    # Фильтрация данных
+    filtered_df = df[(df["Дата операции"] >= start_month) & (df["Дата операции"] <= date)]
 
-    # Получение информации о картах
-    card_info = [get_card_info(transactions, card_number) for card_number in transactions["card_number"].unique()]
+    # Приветствие пользователя в зависимости от времени суток
+    greeting = get_greeting(date)
 
-    # Получение топ-транзакций
-    top_transactions = get_top_transactions(transactions)
+    # Сбор данных по транзакциям и кешбэку
+    transactions_summary = get_transactions_summary(filtered_df)
 
-    # Получение курсов валют
-    currency_rates = get_currency_rates()
+    # Получение топ-5 транзакций
+    top_transactions = get_top_transactions(filtered_df)
 
-    # Получение цен акций
+    # Получение курсов валют и стоимости акций
+    exchange_rates = get_exchange_rates()
     stock_prices = get_stock_prices()
 
-    # Формирование JSON-ответа
+    # Формируем ответ JSON
     response = {
         "greeting": greeting,
-        "cards": card_info,
-        "top_transactions": top_transactions.to_dict(orient="records"),
-        "currency_rates": currency_rates,
+        "transactions_summary": transactions_summary,
+        "top_transactions": top_transactions,
+        "exchange_rates": exchange_rates,
         "stock_prices": stock_prices,
     }
 
     return json.dumps(response)
-
-
-if __name__ == "__main__":
-    date_str = "2023-03-15 14:30:00"
-    response = main(date_str)
-    print(response)
