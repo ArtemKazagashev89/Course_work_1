@@ -2,13 +2,15 @@ import pandas as pd
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Callable
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
-def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
+def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> str:
+    """Вычисляет общую сумму расходов по указанной категории за последние три месяца."""
+
     if date is None:
         date = datetime.now()
     else:
@@ -38,9 +40,11 @@ def spending_by_category(transactions: pd.DataFrame, category: str, date: Option
     return json.dumps(result, ensure_ascii=False)
 
 
-def report_to_file(filename=None):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+def report_to_file(filename: Optional[str] = None) -> Callable:
+    """Декоратор, который сохраняет результат работы функции в файл JSON."""
+
+    def decorator(func: Callable) -> Callable:
+        def wrapper(*args, **kwargs) -> str:
             result = func(*args, **kwargs)
             if filename:
                 file_name = filename
@@ -57,7 +61,9 @@ def report_to_file(filename=None):
 
 # Пример использования декоратора
 @report_to_file(filename="category_report.json")
-def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> str:
+def spending_by_category_report(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> str:
+    """Вычисляет общую сумму расходов по указанной категории за последние три месяца и сохраняет отчет в файл. """
+
     if date is None:
         date = datetime.now()
     else:
@@ -86,7 +92,7 @@ def spending_by_category(transactions: pd.DataFrame, category: str, date: Option
 
 
 # Загрузка данных из файла Excel
-transactions = pd.read_excel("../data/operations.xlss")
+transactions = pd.read_excel("../data/operations.xlsx")
 
 # Преобразуем даты из строк в объект datetime, чтобы с ними было удобно работать
 transactions["Дата операции"] = pd.to_datetime(transactions["Дата операции"])

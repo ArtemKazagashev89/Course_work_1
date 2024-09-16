@@ -1,9 +1,10 @@
 import json
+import os
 from datetime import datetime
-from typing import List, Dict, Any, Union
+from typing import Any, Dict, List, Union
+
 import pandas as pd
 import requests
-import os
 from dotenv import load_dotenv
 
 load_dotenv(".env")
@@ -26,7 +27,6 @@ def get_greeting(date: datetime) -> str:
 
 
 def get_transactions_summary(df: pd.DataFrame) -> List[Dict[str, Union[str, float, int]]]:
-
     """Возвращает сводку транзакций для каждой карты, включая общие расходы и кэшбэк."""
 
     summary = []
